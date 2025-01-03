@@ -2,3 +2,5 @@ Karamoko/*
 Terra/*
 *.json
 .Rproj.user
+gvcf_comparison_results/*
+vcf_comparison_results/*
