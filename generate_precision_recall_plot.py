@@ -15,6 +15,7 @@ def parse_stats_file(stats_file):
                     set_id = int(parts[1])
                     records[set_id] = int(parts[3])
 
+    print(records)
     tp = records.get(2, 0)
     fp = records.get(0, 0) - tp
     fn = records.get(1, 0) - tp
@@ -29,12 +30,13 @@ def calculate_precision_recall(tp, fp, fn):
 def generate_plot(sample_key, chromosomes, precisions, recalls, output_plot):
     """Generate precision and recall plot."""
     plt.figure(figsize=(10, 6))
-    plt.plot(chromosomes, precisions, label="Precision", marker="o")
-    plt.plot(chromosomes, recalls, label="Recall", marker="o")
+    plt.plot(chromosomes, precisions, label="Precision", marker="o", linestyle="--")
+    plt.plot(chromosomes, recalls, label="Recall", marker="o", linestyle="-")
     plt.xlabel("Chromosome")
-    plt.ylabel("Value")
+    plt.ylabel("Metric Value")
     plt.title(f"Precision and Recall by Chromosome for {sample_key}")
     plt.legend()
+    plt.tight_layout()
     plt.savefig(output_plot)
     plt.close()
 
@@ -49,6 +51,7 @@ def main(sample_key, stats_dir, output_plot):
             if chrom_match:
                 chrom = chrom_match.group(1)
                 tp, fp, fn = parse_stats_file(os.path.join(stats_dir, stats_file))
+                print(tp, fp, fn)
                 precision, recall = calculate_precision_recall(tp, fp, fn)
                 chromosomes.append(f"Chr{chrom}")
                 precisions.append(precision)
