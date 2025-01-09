@@ -37,6 +37,9 @@ def calculate_metrics(input_file, genome_length):
             "aligned_frac_bases": aligned_frac_bases,
             "aligned_est_fold_cov": aligned_est_fold_cov,
             "average_identity": average_identity,
+            "total_length": total_length,
+            "bases_mapped": bases_mapped,
+            "mismatches": mismatches
         })
     
     return results
