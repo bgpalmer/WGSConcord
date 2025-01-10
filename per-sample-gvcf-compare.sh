@@ -6,11 +6,11 @@ KARAMOKO_DIR="Karamoko"
 OUTPUT_DIR="gvcf_comparison_results"
 STATS_DIR="$OUTPUT_DIR/stats"
 VARIANTS_DIR="$OUTPUT_DIR/variants"
-CONCORDANCE_DIR="$OUTPUT_DIR/concordance"
+ISEC_DIR="$OUTPUT_DIR/isec"
 GENOME="qc/PlasmoDB-61_Pfalciparum3D7_Genome.fasta"
 
 # Create necessary directories
-mkdir -p "$OUTPUT_DIR" "$STATS_DIR" "$VARIANTS_DIR" "$CONCORDANCE_DIR"
+mkdir -p "$OUTPUT_DIR" "$STATS_DIR" "$VARIANTS_DIR" "$ISEC_DIR"
 
 # Extract sample name from Terra files (up to `.haplotype_caller`)
 extract_terra_sample_key() {
@@ -23,7 +23,7 @@ map_chromosome_name() {
     echo "${chrom_name/Pf3D7_/chr}" | sed 's/_v3//' | sed 's/^chr0/chr/'
 }
 
-# Clean VCF files by removing `<NON_REF>` lines using Nick's suggestion
+# Clean VCF files by removing `<NON_REF>` lines
 clean_vcf_file() {
     local input_vcf="$1"
     local output_vcf="$2"
@@ -74,6 +74,10 @@ for TERRA_FILE in $(find "$TERRA_DIR" -type f -name "*.g.vcf.gz" | sort); do
 
     echo "Processing Terra sample: $TERRA_SAMPLE_KEY"
 
+    # Create a sample-specific stats directory
+    SAMPLE_STATS_DIR="$STATS_DIR/$TERRA_SAMPLE_KEY"
+    mkdir -p "$SAMPLE_STATS_DIR"
+
     # Split Terra file by chromosome
     TERRA_CHROM_DIR="$VARIANTS_DIR/${TERRA_SAMPLE_KEY}_terra_chromosomes"
     split_terra_by_chromosome "$TERRA_FILE" "$TERRA_CHROM_DIR"
@@ -102,36 +106,22 @@ for TERRA_FILE in $(find "$TERRA_DIR" -type f -name "*.g.vcf.gz" | sort); do
         clean_vcf_file "$karamoko_file" "$cleaned_karamoko_vcf"
 
         # Perform comparisons with bcftools isec
-        OUTPUT_PREFIX="comparison_${TERRA_SAMPLE_KEY}_${chrom_name}"
+        isec_output_dir="${ISEC_DIR}/${TERRA_SAMPLE_KEY}_${chrom_name}"
+        mkdir -p "$isec_output_dir"
         echo "Running bcftools isec..."
-        bcftools isec -p "${OUTPUT_DIR}/${OUTPUT_PREFIX}_isec" "$cleaned_terra_vcf" "$cleaned_karamoko_vcf"
+        bcftools isec -p "$isec_output_dir" "$cleaned_terra_vcf" "$cleaned_karamoko_vcf"
 
-        # Generate stats using bcftools
+        # Generate stats for original and comparison files
         echo "Generating bcftools stats..."
-        bcftools stats "$cleaned_terra_vcf" > "$STATS_DIR/${TERRA_SAMPLE_KEY}_${chrom_name}_terra.stats.txt"
-        bcftools stats "$cleaned_karamoko_vcf" > "$STATS_DIR/${TERRA_SAMPLE_KEY}_${chrom_name}_karamoko.stats.txt"
+        bcftools stats "$cleaned_terra_vcf" > "$SAMPLE_STATS_DIR/${chrom_name}_terra.stats.txt"
+        bcftools stats "$cleaned_karamoko_vcf" > "$SAMPLE_STATS_DIR/${chrom_name}_karamoko.stats.txt"
 
-        # Perform SnpSift concordance
-        echo "Running SnpSift concordance..."
-        CONCORDANCE_OUTPUT_DIR="$CONCORDANCE_DIR/${TERRA_SAMPLE_KEY}_${chrom_name}"
-        mkdir -p "$CONCORDANCE_OUTPUT_DIR"
-
-        terra_vcf_unzipped="${CONCORDANCE_OUTPUT_DIR}/terra_unzipped.vcf"
-        karamoko_vcf_unzipped="${CONCORDANCE_OUTPUT_DIR}/karamoko_unzipped.vcf"
-
-        gunzip -c "$cleaned_terra_vcf" > "$terra_vcf_unzipped"
-        gunzip -c "$cleaned_karamoko_vcf" > "$karamoko_vcf_unzipped"
-
-        snpsift_output="${CONCORDANCE_OUTPUT_DIR}/snpsift_concordance.txt"
-        echo "SnpSift concordance $terra_vcf_unzipped $karamoko_vcf_unzipped > $snpsift_output"
-        SnpSift concordance "$terra_vcf_unzipped" "$karamoko_vcf_unzipped" > "$snpsift_output"
-
-        # Move generated SnpSift files to the appropriate directory
-        mv concordance_terra_unzipped_karamoko_unzipped.by_sample.txt "$CONCORDANCE_OUTPUT_DIR/"
-        mv concordance_terra_unzipped_karamoko_unzipped.summary.txt "$CONCORDANCE_OUTPUT_DIR/"
-
-        echo "SnpSift outputs written to $CONCORDANCE_OUTPUT_DIR"
+        for isec_file in "$isec_output_dir"/*.vcf; do
+            isec_stats_file="$SAMPLE_STATS_DIR/$(basename "${isec_file%.vcf}")_stats.txt"
+            bcftools stats "$isec_file" > "$isec_stats_file"
+            echo "Generated stats for $isec_file -> $isec_stats_file"
+        done
     done
 done
 
-echo "All comparisons completed. Outputs are in $OUTPUT_DIR."
+echo "All comparisons and stats generation completed. Outputs are in $OUTPUT_DIR."

@@ -211,7 +211,7 @@ def create_combined_chromosome_page(chromosome_data, chromosome_lengths, samples
                     sample_data = sample_data_list[0]
                     color = sample_colors[sample_name]
                     ctx.set_source_rgb(*color)
-                    ctx.set_line_width(0.1)
+                    ctx.set_line_width(0.15)
 
                     # Offset annotations for visibility
                     sample_y_offset = y_position + (sample_index - num_samples / 2) * sample_offset
@@ -221,7 +221,7 @@ def create_combined_chromosome_page(chromosome_data, chromosome_lengths, samples
                         x_pos = margin + pos * x_scale
 
                         # Draw smaller point
-                        ctx.arc(x_pos, sample_y_offset, 0.1, 0, 2 * 3.14159)
+                        ctx.arc(x_pos, sample_y_offset, 0.15, 0, 2 * 3.14159)
                         ctx.fill()
 
             # Move to the next chromosome position
@@ -246,6 +246,59 @@ def create_combined_visualization(chromosome_data, chromosome_lengths, samples, 
     create_combined_chromosome_page(chromosome_data, chromosome_lengths, samples, output_file)
 
 
+def filter_concordance_data(concordance_data, mode="genotype_differences"):
+    """
+    Filter concordance data based on the mode.
+    :param concordance_data: Parsed concordance data organized by chromosome.
+    :param mode: Filter mode - "genotype_differences" or "missing_entries".
+    :return: Filtered concordance data.
+    """
+    filtered_data = {}
+    for chromosome, dfs in concordance_data.items():
+        filtered_dfs = []
+        for df in dfs:
+            if mode == "genotype_differences":
+                # Keep rows where both entries exist and genotypes differ
+                genotype_columns = [col for col in df.columns if ("ALT" in col or "REF" in col) and "MISSING" not in col]
+                filtered_df = df[df[genotype_columns].astype(int).sum(axis=1) > 0]  # Any genotype difference
+            elif mode == "missing_entries":
+                # Keep rows where one dataset is missing an entry
+                missing_columns = [col for col in df.columns if "MISSING" in col]
+                filtered_df = df[df[missing_columns].astype(int).sum(axis=1) > 0]  # Any missing entry
+            else:
+                logging.warning(f"Invalid mode: {mode}")
+                filtered_df = pd.DataFrame()  # Empty DataFrame for invalid mode
+
+            if not filtered_df.empty:
+                filtered_dfs.append(filtered_df)
+
+        if filtered_dfs:
+            filtered_data[chromosome] = filtered_dfs
+
+    return filtered_data
+
+
+def create_combined_visualizations_by_mode(concordance_data, chromosome_lengths, samples, output_dir):
+    """
+    Create separate visualizations for genotype differences and missing entries.
+    :param concordance_data: Parsed concordance data.
+    :param chromosome_lengths: Chromosome lengths for scaling.
+    :param samples: List of samples.
+    :param output_dir: Directory to save the visualizations.
+    """
+    # Filter and visualize for genotype differences
+    genotype_diff_data = filter_concordance_data(concordance_data, mode="genotype_differences")
+    genotype_diff_file = os.path.join(output_dir, "genotype_differences_visualization.png")
+    create_combined_chromosome_page(genotype_diff_data, chromosome_lengths, samples, genotype_diff_file)
+    logging.info(f"Genotype differences visualization saved: {genotype_diff_file}")
+
+    # Filter and visualize for missing entries
+    missing_entries_data = filter_concordance_data(concordance_data, mode="missing_entries")
+    missing_entries_file = os.path.join(output_dir, "missing_entries_visualization.png")
+    create_combined_chromosome_page(missing_entries_data, chromosome_lengths, samples, missing_entries_file)
+    logging.info(f"Missing entries visualization saved: {missing_entries_file}")
+
+
 # Main
 if __name__ == "__main__":
     # Configuration
@@ -257,9 +310,9 @@ if __name__ == "__main__":
 
     # Parse reference genome and concordance data
     chromosome_lengths = get_chromosome_lengths(reference_genome_path)
-    chromosome_data, samples = parse_concordance_files(concordance_dir)
+    concordance_data, samples = parse_concordance_files(concordance_dir)
 
-    # Create combined visualization
-    create_combined_visualization(chromosome_data, chromosome_lengths, samples, output_dir)
+    # Create separate visualizations
+    create_combined_visualizations_by_mode(concordance_data, chromosome_lengths, samples, output_dir)
 
     logging.info("Script completed successfully")
