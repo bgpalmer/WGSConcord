@@ -7,7 +7,7 @@ import re
 import logging
 from math import ceil
 import colorsys
-
+import matplotlib.pyplot as plt
 
 # Configure logging
 logging.basicConfig(
@@ -123,9 +123,9 @@ def parse_concordance_files(concordance_dir):
 
 def create_combined_chromosome_page(chromosome_data, chromosome_lengths, samples, output_file):
     """
-    Create a single-page visualization for all chromosomes with better spacing, unique colors, and sample names.
+    Create a single-page visualization with a dark theme and vibrant color-blind-friendly palette.
     """
-    logging.info("Creating combined visualization with rotated chromosome labels and padding")
+    logging.info("Creating combined visualization with dark theme and accessible colors")
     try:
         # Canvas dimensions
         num_chromosomes = len(chromosome_lengths)
@@ -145,35 +145,40 @@ def create_combined_chromosome_page(chromosome_data, chromosome_lengths, samples
         surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, height)
         ctx = cairo.Context(surface)
 
-        # Set background
+        # Set dark background
         ctx.rectangle(0, 0, width, height)
-        ctx.set_source_rgb(1, 1, 1)  # White background
+        ctx.set_source_rgb(0.1, 0.1, 0.1)  # Dark gray background
         ctx.fill()
-        logging.info("Canvas background set to white")
+        logging.info("Canvas background set to dark gray")
 
         # Title
-        ctx.set_source_rgb(0, 0, 0)
+        ctx.set_source_rgb(1, 1, 1)  # White text
         ctx.set_font_size(28)
         ctx.select_font_face('Arial', cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD)
         ctx.move_to(margin, 50)
         ctx.show_text("Chromosome Visualization with Sample Annotations")
         logging.info("Title added to canvas")
 
+        # Use Matplotlib's tableau-colorblind palette
+        cmap = plt.cm.get_cmap("tab10")  # Alternatively, use "tab20" for more colors
+        sample_colors = {
+            sample: cmap(i / max(1, len(samples)))[:3]  # Get RGB and convert to 0-1 scale
+            for i, sample in enumerate(samples)
+        }
+
         # Legend
         legend_x = width - 300
         legend_y = 100  # Initialize legend position explicitly
-        ctx.set_source_rgb(0, 0, 0)
+        ctx.set_source_rgb(1, 1, 1)  # White text for legend
         ctx.set_font_size(24)
         ctx.move_to(legend_x, legend_y)
         ctx.show_text("Legend:")
 
-        for i, (sample_name, color) in enumerate(
-            {sample: colorsys.hsv_to_rgb(i / num_samples, 0.8, 0.8) for i, sample in enumerate(samples)}.items()
-        ):
+        for i, (sample_name, color) in enumerate(sample_colors.items()):
             ctx.set_source_rgb(*color)
             ctx.rectangle(legend_x + 20, legend_y + (i + 1) * 30 - 10, 20, 20)
             ctx.fill()
-            ctx.set_source_rgb(0, 0, 0)
+            ctx.set_source_rgb(1, 1, 1)  # White text for sample names
             ctx.move_to(legend_x + 50, legend_y + (i + 1) * 30 + 5)
             ctx.show_text(sample_name)
         logging.info("Legend added to canvas")
@@ -187,16 +192,14 @@ def create_combined_chromosome_page(chromosome_data, chromosome_lengths, samples
             # Chromosome label
             label_x = margin - 50  # Fixed x-coordinate for chromosome labels
             label_y = y_position  # Use current y_position for the label
-            logging.debug(f"Chromosome {chromosome} label position: ({label_x}, {label_y})")
-            
             ctx.save()
-            ctx.set_source_rgb(0, 0, 0)
-            ctx.set_font_size(18)
+            ctx.set_source_rgb(1, 1, 1)  # White text for chromosome labels
+            ctx.set_font_size(24)
             ctx.translate(label_x, label_y)  # Set translation for the label
             ctx.rotate(-3.14159 / 2)  # Rotate 90 degrees for vertical label
             ctx.show_text(f"{chromosome}")
             ctx.restore()
-            logging.info(f"Chromosome {chromosome} label added, ({label_x}, {label_y})")
+            logging.info(f"Chromosome {chromosome} label added")
 
             # Annotations for each sample
             if chromosome in chromosome_data:
@@ -206,7 +209,7 @@ def create_combined_chromosome_page(chromosome_data, chromosome_lengths, samples
                     if not sample_data_list:
                         continue
                     sample_data = sample_data_list[0]
-                    color = {sample: colorsys.hsv_to_rgb(i / num_samples, 0.8, 0.8) for i, sample in enumerate(samples)}[sample_name]
+                    color = sample_colors[sample_name]
                     ctx.set_source_rgb(*color)
                     ctx.set_line_width(0.1)
 
