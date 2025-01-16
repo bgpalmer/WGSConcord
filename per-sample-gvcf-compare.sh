@@ -7,10 +7,11 @@ OUTPUT_DIR="gvcf_comparison_results"
 STATS_DIR="$OUTPUT_DIR/stats"
 VARIANTS_DIR="$OUTPUT_DIR/variants"
 ISEC_DIR="$OUTPUT_DIR/isec"
+SORTED_DIR="$OUTPUT_DIR/sorted"
 GENOME="qc/PlasmoDB-61_Pfalciparum3D7_Genome.fasta"
 
 # Create necessary directories
-mkdir -p "$OUTPUT_DIR" "$STATS_DIR" "$VARIANTS_DIR" "$ISEC_DIR"
+mkdir -p "$OUTPUT_DIR" "$STATS_DIR" "$VARIANTS_DIR" "$ISEC_DIR" "$SORTED_DIR"
 
 # Extract sample name from Terra files (up to `.haplotype_caller`)
 extract_terra_sample_key() {
@@ -27,10 +28,11 @@ map_chromosome_name() {
 clean_vcf_file() {
     local input_vcf="$1"
     local output_vcf="$2"
+    local sorted_vcf="$SORTED_DIR/sorted_${input_vcf##*/}"
 
     echo "Cleaning VCF file: $input_vcf -> $output_vcf"
-    bcftools sort "$input_vcf" -Oz -o "sorted_${input_vcf##*/}"
-    bcftools norm -m - "sorted_${input_vcf##*/}" | egrep -v "<NON_REF>" | bcftools convert -Oz -o "$output_vcf"
+    bcftools sort "$input_vcf" -Oz -o "$sorted_vcf"
+    bcftools norm -m - "$sorted_vcf" | egrep -v "<NON_REF>" | bcftools convert -Oz -o "$output_vcf"
     bcftools index -f "$output_vcf"
     echo "Cleaned VCF file written to: $output_vcf"
 }
@@ -51,7 +53,7 @@ split_terra_by_chromosome() {
                 bcftools index -f "$terra_file"
             fi
 
-            bcftools view -v snps -r "$chrom_name" -Oz -o "$output_file" "$terra_file"
+            bcftools view -r "$chrom_name" -Oz -o "$output_file" "$terra_file"
             bcftools index -f "$output_file"
         fi
     done
@@ -109,6 +111,8 @@ for TERRA_FILE in $(find "$TERRA_DIR" -type f -name "*.g.vcf.gz" | sort); do
         isec_output_dir="${ISEC_DIR}/${TERRA_SAMPLE_KEY}_${chrom_name}"
         mkdir -p "$isec_output_dir"
         echo "Running bcftools isec..."
+        echo "ISEC COMMAND: bcftools isec -p $isec_output_dir $cleaned_terra_vcf $cleaned_karamoko_vcf"
+
         bcftools isec -p "$isec_output_dir" "$cleaned_terra_vcf" "$cleaned_karamoko_vcf"
 
         # Generate stats for original and comparison files

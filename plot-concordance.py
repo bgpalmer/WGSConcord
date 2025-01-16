@@ -54,7 +54,7 @@ def parse_isec_vcfs(isec_dir):
 
     for root, _, files in os.walk(isec_dir):
         for file in files:
-            if file.endswith("0000.vcf") or file.endswith("0001.vcf"):
+            if file.endswith("0001.vcf") or file.endswith("0003.vcf"):
                 vcf_path = os.path.join(root, file)
                 logging.info(f"Processing VCF: {vcf_path}")
 
@@ -102,6 +102,7 @@ def parse_isec_vcfs(isec_dir):
                 except Exception as e:
                     logging.error(f"Error parsing VCF {vcf_path}: {e}")
 
+    print(data)
     return data, list(samples)
 
 def filter_isec_data(isec_data, mode="genotype_differences"):
@@ -172,7 +173,7 @@ def create_combined_chromosome_page(chromosome_data, chromosome_lengths, samples
         ctx.set_source_rgb(1, 1, 1)
         ctx.set_font_size(28)
         ctx.move_to(margin, 50)
-        ctx.show_text("Chromosome Visualization")
+        ctx.show_text("Variants found in Karamoko VCFs")
 
         # Colors for samples
         cmap = plt.cm.get_cmap("tab10")
