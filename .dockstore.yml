@@ -5,7 +5,6 @@ workflows:
     name: PfComputeDepthOfCoverage
     authors:
       - name: Brian Palmer
-        email: bgpalmer14@gmail.com
-      }
+      - email: bgpalmer14@gmail.com
     topic: Coverage
 
