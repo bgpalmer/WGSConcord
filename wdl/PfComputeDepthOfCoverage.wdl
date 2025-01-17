@@ -5,10 +5,13 @@ workflow PfReadDepthWorkflow {
         String sample_id
         File pf_bam
         File pf_bam_index
-        Map[String, String] ref_map
+        File ref_map_file  # Accepts the ref_map file as input
         Int task_memory_gb = 16  # Set default memory allocation (adjustable)
         String output_dir = "output"  # Default output directory
     }
+
+    # Read the reference map file into a Map[String, String]
+    Map[String, String] ref_map = read_map(ref_map_file)
 
     call CalculateReadDepth {
         input:
