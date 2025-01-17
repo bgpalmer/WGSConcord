@@ -38,11 +38,10 @@ task CalculateReadDepth {
         File ref_dict
         File ref_fasta_index
         Int task_memory_gb
+        String storage
     }
 
     command <<<
-        mkdir -p TMP
-
         for i in {01..14}; do
             gatk --java-options "-Xmx~{task_memory_gb}g -Xms~{task_memory_gb}g" DepthOfCoverage \
                 -R ~{ref_fasta} \
@@ -51,7 +50,6 @@ task CalculateReadDepth {
                 -L Pf3D7_${i}_v3 \
                 --omit-locus-table true \
                 -I ~{pf_bam} \
-                --tmp-dir TMP
             sed '${/^Total/d;}' chr${i}.sample_summary > tmp.chr${i}.sample_summary
             awk -F"\t" -v OFS="\t" '{ print $0, $(NF) = "chr'${i}'" }' tmp.chr${i}.sample_summary > chr${i}.sample2_summary
         done
@@ -65,6 +63,7 @@ task CalculateReadDepth {
 
     runtime {
         memory: "~{task_memory_gb}G"
+        disks: "~{storage}"
         cpu: 1
         docker: "broadinstitute/gatk:4.6.1.0"
     }
