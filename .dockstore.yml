@@ -1,10 +1,10 @@
 version: 1.2
 workflows:
   - subclass: WDL
-    primaryDescriptorPath: wdl/PfComputeDepthOfCoverage.wdl
+    primaryDescriptorPath: /WGSConcord/wdl/PfComputeDepthOfCoverage.wdl
     name: PfComputeDepthOfCoverage
     authors:
       - name: Brian Palmer
-      - email: bgpalmer14@gmail.com
+        email: bgpalmer14@gmail.com
     topic: Coverage
 
