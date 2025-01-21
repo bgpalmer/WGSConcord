@@ -8,6 +8,7 @@ workflow PfReadDepthWorkflow {
         File ref_map_file  # Accepts the ref_map file as input
         Int task_memory_gb = 16  # Set default memory allocation (adjustable)
         String output_dir = "output"  # Default output directory
+        String storage
     }
 
     # Read the reference map file into a Map[String, String]
@@ -21,7 +22,9 @@ workflow PfReadDepthWorkflow {
             ref_fasta = ref_map["fasta"],
             ref_dict = ref_map["dict"],
             ref_fasta_index = ref_map["fai"],
-            task_memory_gb = task_memory_gb
+            task_memory_gb = task_memory_gb,
+            storage
+
     }
 
     output {
