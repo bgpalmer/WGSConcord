@@ -23,7 +23,7 @@ workflow PfReadDepthWorkflow {
             ref_dict = ref_map["dict"],
             ref_fasta_index = ref_map["fai"],
             task_memory_gb = task_memory_gb,
-            storage
+            storage = storage
 
     }
 
