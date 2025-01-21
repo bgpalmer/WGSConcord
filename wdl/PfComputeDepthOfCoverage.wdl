@@ -38,7 +38,6 @@ task CalculateReadDepth {
         File ref_dict
         File ref_fasta_index
         Int task_memory_gb
-        String storage
     }
 
     command <<<
@@ -63,7 +62,7 @@ task CalculateReadDepth {
 
     runtime {
         memory: "~{task_memory_gb}G"
-        disks: "~{storage}"
+        disks: "local-disk 250 SSD"
         cpu: 1
         docker: "broadinstitute/gatk:4.6.1.0"
     }
