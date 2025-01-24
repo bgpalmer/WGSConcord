@@ -6,6 +6,7 @@ workflow PfReadDepthWorkflow {
         File pf_bam
         File pf_bam_index
         File ref_map_file  # Accepts the ref_map file as input
+        File regions_bed_file  # BED file specifying regions of interest
         Int task_memory_gb = 16  # Set default memory allocation (adjustable)
         String output_dir = "output"  # Default output directory
     }
@@ -21,6 +22,7 @@ workflow PfReadDepthWorkflow {
             ref_fasta = ref_map["fasta"],
             ref_dict = ref_map["dict"],
             ref_fasta_index = ref_map["fai"],
+            regions_bed = regions_bed_file,
             task_memory_gb = task_memory_gb
     }
 
@@ -37,26 +39,26 @@ task CalculateReadDepth {
         File ref_fasta
         File ref_dict
         File ref_fasta_index
+        File regions_bed  # New input for regions BED file
         Int task_memory_gb
     }
 
     command <<<
         mkdir -p TMP
 
-        for i in {01..14}; do
-            gatk --java-options "-Xmx~{task_memory_gb}g -Xms~{task_memory_gb}g" DepthOfCoverage \
-                -R ~{ref_fasta} \
-                -O chr${i} \
-                --output-format TABLE \
-                -L Pf3D7_${i}_v3 \
-                --omit-locus-table true \
-                -I ~{pf_bam} \
-                --tmp-dir TMP
-            sed '${/^Total/d;}' chr${i}.sample_summary > tmp.chr${i}.sample_summary
-            awk -F"\t" -v OFS="\t" '{ print $0, $(NF) = "chr'${i}'" }' tmp.chr${i}.sample_summary > chr${i}.sample2_summary
-        done
+        gatk --java-options "-Xmx~{task_memory_gb}g -Xms~{task_memory_gb}g" DepthOfCoverage \
+            -R ~{ref_fasta} \
+            -I ~{pf_bam} \
+            -L ~{regions_bed} \
+            --output-format TABLE \
+            --omit-locus-table true \
+            -O depth_of_coverage \
+            --tmp-dir TMP
 
-        cat *.sample2_summary | awk '!/sample_id/ {print $0}' | sed '1isample_id\ttotal\tmean\tthird_quartile\tmedian\tfirst_quartile\tbases_perc_above_15\tchromosome' > ~{sample_id}_read_coverage.tsv
+        # Post-process the output to ensure formatting matches expectations
+        awk -F"\t" -v OFS="\t" '{ print $0 }' depth_of_coverage.sample_summary > tmp.sample_summary
+        sed '${/^Total/d;}' tmp.sample_summary > filtered.sample_summary
+        awk -F"\t" -v OFS="\t" '{ print $0 }' filtered.sample_summary > ~{sample_id}_read_coverage.tsv
     >>>
 
     output {
