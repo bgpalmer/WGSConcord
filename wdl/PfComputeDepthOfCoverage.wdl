@@ -40,8 +40,15 @@ workflow PfReadDepthWorkflow {
         }
     }
 
+    # Recombine all per-chromosome outputs into a single file
+    call CombineReadDepthOutputs {
+        input:
+            sample_id = sample_id,
+            tsv_files = CalculateReadDepth.output_tsv
+    }
+
     output {
-        Array[File] read_coverage_tsv = CalculateReadDepth.output_tsv
+        File read_coverage_tsv = CombineReadDepthOutputs.combined_tsv
     }
 }
 
@@ -108,5 +115,31 @@ task CalculateReadDepth {
         disks: "local-disk 250 SSD"
         cpu: 1
         docker: "broadinstitute/gatk:4.6.1.0"
+    }
+}
+
+task CombineReadDepthOutputs {
+    input {
+        String sample_id
+        Array[File] tsv_files
+    }
+
+    command <<<
+        # Combine all per-chromosome coverage files into one
+        head -n 1 ~{tsv_files[0]} > ~{sample_id}_combined_read_coverage.tsv  # Add header
+        for file in ~{sep=" " tsv_files}; do
+            tail -n +2 $file >> ~{sample_id}_combined_read_coverage.tsv
+        done
+    >>>
+
+    output {
+        File combined_tsv = "~{sample_id}_combined_read_coverage.tsv"
+    }
+
+    runtime {
+        memory: "2G"
+        disks: "local-disk 20 SSD"
+        cpu: 1
+        docker: "ubuntu:20.04"
     }
 }
