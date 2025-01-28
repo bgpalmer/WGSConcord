@@ -101,9 +101,7 @@ task CalculateReadDepth {
             --tmp-dir TMP
 
         # Post-process the output to ensure formatting matches expectations
-        awk -F"\t" -v OFS="\t" '{ print $0 }' depth_of_coverage_~{chromosome}.sample_summary > tmp.sample_summary
-        sed '${/^Total/d;}' tmp.sample_summary > filtered.sample_summary
-        awk -F"\t" -v OFS="\t" '{ print $0 }' filtered.sample_summary > ~{sample_id}_~{chromosome}_read_coverage.tsv
+        awk -F"\t" -v OFS="\t" -v chrom="~{chromosome}" 'NR == 1 {print $0, "chromosome"} NR > 1 {print $0, chrom}' depth_of_coverage_~{chromosome}.sample_summary > ~{sample_id}_~{chromosome}_read_coverage.tsv
     >>>
 
     output {
